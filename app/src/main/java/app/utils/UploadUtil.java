@@ -1,4 +1,4 @@
-package app.service;
+package app.utils;
 
 import android.util.Log;
 
@@ -7,6 +7,8 @@ import org.apache.commons.io.IOUtils;
 import java.io.InputStream;
 
 import app.model.Media;
+import app.service.ServiceFactory;
+import app.service.UploadService;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;

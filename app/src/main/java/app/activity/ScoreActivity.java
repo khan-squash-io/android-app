@@ -25,15 +25,18 @@ import java.io.InputStream;
 import java.util.Calendar;
 
 import app.Constants;
-import app.service.UploadUtil;
-import app.video.MediaUtil;
+import app.utils.UploadUtil;
+import app.utils.MediaUtil;
 import io.khan.squash.R;
 
 public class ScoreActivity extends AppCompatActivity {
 
     private static final String TAG = ScoreActivity.class.getSimpleName();
 
-    private static String[] PERMISSIONS_SELFIE = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA};
+    private static String[] PERMISSIONS_SELFIE = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.CAMERA};
 
     int scorePlayerA = 0;
     int scorePlayerB = 0;
@@ -217,7 +220,6 @@ public class ScoreActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
 
         try {
             Uri uri = MediaUtil.handleIntent(data, requestCode);
