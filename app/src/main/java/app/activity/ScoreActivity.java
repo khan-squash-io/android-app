@@ -1,43 +1,49 @@
 package app.activity;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.annotation.IdRes;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import com.afollestad.materialcamera.MaterialCamera;
+import com.roughike.bottombar.BottomBar;
+import com.roughike.bottombar.OnTabReselectListener;
+import com.roughike.bottombar.OnTabSelectListener;
 
 import java.io.File;
+import java.io.InputStream;
+import java.util.Calendar;
 
-import app.model.Media;
-import app.service.ServiceFactory;
-import app.service.UploadService;
+import app.Constants;
+import app.service.UploadUtil;
+import app.video.MediaUtil;
 import io.khan.squash.R;
-import okhttp3.MediaType;
-import okhttp3.MultipartBody;
-import okhttp3.RequestBody;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 public class ScoreActivity extends AppCompatActivity {
 
-
-    UploadService service = ServiceFactory.createRetrofitService(UploadService.class, UploadService.SERVICE_ENDPOINT);
-
     private static final String TAG = ScoreActivity.class.getSimpleName();
-    private static final int REQUEST_IMAGE_CAPTURE = 1;
-    private final static int CAMERA_RQ = 6969;
+
+    private static String[] PERMISSIONS_SELFIE = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA};
 
     int scorePlayerA = 0;
     int scorePlayerB = 0;
-
     EditText scoreAView;
     EditText scoreBView;
+
+    BottomBar bottomBar;
+
+    private String videoFileName;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,9 +57,11 @@ public class ScoreActivity extends AppCompatActivity {
         scoreBView.setCursorVisible(false);
         scoreBView.setEnabled(true);
 
+        bottomBar = (BottomBar) findViewById(R.id.bottomBar);
 
-        new MaterialCamera(this)
-                .start(CAMERA_RQ);
+        bottomBar.setOnTabSelectListener(getOnTabSelectListener());
+        bottomBar.setOnTabReselectListener(getOnTabReSelectListener());
+
     }
     /*
     * Player A Code Started
@@ -102,12 +110,6 @@ public class ScoreActivity extends AppCompatActivity {
     }
 
 
-    private void dispatchTakePictureIntent() {
-        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
-        }
-    }
 
 
     //Reset button code
@@ -116,11 +118,6 @@ public class ScoreActivity extends AppCompatActivity {
         scorePlayerB = 0;
         displayForPlayerA(0);
         displayForPlayerB(0);
-
-        new MaterialCamera(this)
-                .countdownMinutes(2.5f)
-                .countdownImmediately(true)
-                .start(CAMERA_RQ);
 
     }
 
@@ -134,56 +131,123 @@ public class ScoreActivity extends AppCompatActivity {
     }
 
 
+    public OnTabSelectListener getOnTabSelectListener() {
+        return new OnTabSelectListener() {
+            @Override
+            public void onTabSelected(@IdRes int tabId) {
+                if (tabId == R.id.tab_favorites) {
+                    Log.v(TAG, "starting camera ....");
+                    dispatchTakePictureIntent();
+
+                }
+                if (tabId == R.id.tab_nearby) {
+                    Log.v(TAG, "starting video ....");
+                    dispatchTakeVideoIntent();
+
+                }
+            }
+        };
+
+    }
+
+
+    public OnTabReselectListener getOnTabReSelectListener() {
+        return new OnTabReselectListener() {
+            @Override
+            public void onTabReSelected(@IdRes int tabId) {
+                if (tabId == R.id.tab_favorites) {
+                    Log.v(TAG, "starting camera ....");
+                    dispatchTakePictureIntent();
+
+                }
+                if (tabId == R.id.tab_nearby) {
+                    Log.v(TAG, "starting video ....");
+                    dispatchTakeVideoIntent();
+
+                }
+            }
+        };
+    }
+
+    private void dispatchTakePictureIntent() {
+
+        if ((ContextCompat.checkSelfPermission(ScoreActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) &&
+                (ContextCompat.checkSelfPermission(ScoreActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+                && (ContextCompat.checkSelfPermission(ScoreActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)) {
+            } else {
+
+            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+                startActivityForResult(takePictureIntent, Constants.IMAGE_CAPTURE);
+
+            } else {
+                Toast.makeText(getApplicationContext(), "Some Permissions Denied", Toast.LENGTH_SHORT).show();
+            }
+        }
+
+    }
+
+
+    private void dispatchTakeVideoIntent() {
+
+        //set name & path to video file
+        String fileName = "video." + File.separator + Calendar.getInstance().getTimeInMillis() + ".mp4";
+
+        videoFileName = Environment.getExternalStorageDirectory() + fileName;
+      //  //check if folder exists, else, create it
+      //  File path = new File(Environment.getExternalStorageDirectory() + "/videos/");
+      //  if (!path.exists())
+       //     path.mkdirs();
+
+        //create the intent
+        Intent intent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
+
+        //Add extra to save video
+        Uri output = Uri.fromFile(new File(videoFileName));
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, output);
+        intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 15);
+
+        if (intent.resolveActivity(getPackageManager()) != null) {
+            startActivityForResult(intent, Constants.REC_VIDEO);
+        }
+    }
+
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        // Received recording or error from MaterialCamera
-        if (requestCode == CAMERA_RQ) {
 
-            if (resultCode == RESULT_OK) {
-                Toast.makeText(this, "Saved to: " + data.getDataString(), Toast.LENGTH_LONG).show();
+        try {
+            Uri uri = MediaUtil.handleIntent(data, requestCode);
+            final InputStream inputStream = MediaUtil.getMediaStream(this, uri);
 
-                try {
-                    final File file = new File(data.getData().getPath());
-                    Log.v(TAG, "file = "+ file.getName());
-
-                    RequestBody requestFile =
-                            RequestBody.create(MediaType.parse("audio/mpeg"), file);
-
-                    MultipartBody.Part body =
-                            MultipartBody.Part.createFormData("title", file.getName(), requestFile);
-
-
-
-                    Call<Media> call = service.uploadMedia(body,"4246101093");
-                    Log.v(TAG,"calling service : "+ call.toString());
-
-                    call.enqueue(new Callback<Media>() {
-                        @Override
-                        public void onResponse(Call<Media> media,
-                                               Response<Media> response) {
-                            Log.v(TAG, "response from server  : " + response.isSuccessful());
-                        }
-                        @Override
-                        public void onFailure(Call<Media> call, Throwable t) {
-                            Log.e(TAG, "failed to connect to server : " +  t.getMessage());
-                        }
-                    });
-
-
-
-                } catch (Exception e){
-                    Log.e(TAG, "error : "  + e.getMessage());
+            AsyncTask<Void, Void, Void> t = new AsyncTask<Void, Void, Void>() {
+                @Override
+                protected void onPreExecute() {
+                    super.onPreExecute();
                 }
 
-            } else if(data != null) {
-                Exception e = (Exception) data.getSerializableExtra(MaterialCamera.ERROR_EXTRA);
-                e.printStackTrace();
-                Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
-            }
+                @Override
+                protected Void doInBackground(Void... params) {
+                    try {
+                        UploadUtil.uploadMedia(inputStream);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error uploading video... " + e.toString());
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void onPostExecute(Void result) {
+                    super.onPostExecute(result);
+                }
+            };
+            t.execute();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error uploading video... " + e.toString());
         }
     }
-
 }
-

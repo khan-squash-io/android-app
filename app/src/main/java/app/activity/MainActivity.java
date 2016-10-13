@@ -1,6 +1,5 @@
 package app.activity;
 
-import android.app.FragmentManager;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -34,8 +33,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final String TWITTER_KEY = "wnuGRAYEaUxf8akYAcA0yko90";
     private static final String TWITTER_SECRET = "FvpJ4s2fCSF4eSKgDJJIrRlWMphaYQ1H2M3n7LquexHclCCXek";
-    private AuthCallback authCallback;
-    private FragmentManager fragmentManager;
+
     private int frameIndex = 0;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,13 +42,14 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
-        fragmentManager = getFragmentManager();
 
         final PaperOnboardingFragment onBoardingFragment = PaperOnboardingFragment.newInstance(getDataForOnboarding());
 
         if (!Fabric.isInitialized()) {
             TwitterAuthConfig authConfig = new TwitterAuthConfig(TWITTER_KEY, TWITTER_SECRET);
-            Fabric.with(MainActivity.this, new TwitterCore(authConfig), new Digits.Builder().build());
+
+            Digits.Builder digitsBuilder = new Digits.Builder().withTheme(R.style.CustomDigitsTheme);
+            Fabric.with(MainActivity.this, new TwitterCore(authConfig), digitsBuilder.build());
         }
 
 
